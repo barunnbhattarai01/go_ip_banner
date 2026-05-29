@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"sync"
@@ -62,15 +63,15 @@ func rateLimitAndIpBan(next http.HandlerFunc) http.HandlerFunc {
 		ip, port, err := net.SplitHostPort(r.RemoteAddr)
 
 		if err != nil {
-
-			w.Write([]byte("Some server error"))
+			log.Fatal("Some error", err)
+			return
 		}
 
 		mu.Lock()
 
 		if _, found := bannedClients[ip]; found {
 			msg := fmt.Sprintf("your ip has been banned for 1 day for suspicious activity your public ip address is %s and empheral port is %s", ip, port)
-			w.Write([]byte(msg))
+			writeJson(w, envelope{"message": msg}, nil, http.StatusBadRequest)
 			mu.Unlock()
 			return
 		}
@@ -91,8 +92,7 @@ func rateLimitAndIpBan(next http.HandlerFunc) http.HandlerFunc {
 				lastSeen: time.Now(),
 			}
 			msg := fmt.Sprintf(" too many request your ip has been banned for 1 day for suspicious activity your public ip address is %s and empheral port is %s", ip, port)
-			w.Write([]byte(msg))
-
+			writeJson(w, envelope{"message": msg}, nil, http.StatusBadRequest)
 			mu.Unlock()
 			return
 		}
